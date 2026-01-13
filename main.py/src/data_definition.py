@@ -11,5 +11,6 @@ class DataDefinition:
     categorical_cols = ['person_gender',
                         'person_education',
                         'person_home_ownership',
+                        'previous_loan_defaults_on_file',
                         'loan_intent']
     target_col = 'loan_status'
