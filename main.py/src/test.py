@@ -78,22 +78,42 @@ def logistic_regression():
 
     # Make predictions and evaluate
     y_pred = scale_encode_train_test_pipeline.predict(X_test)
+    y_pred_proba = scale_encode_train_test_pipeline.predict_proba(X_test)[:, 1]  # Get probabilities for AUC
 
-    from sklearn.metrics import accuracy_score, classification_report
+    from sklearn.metrics import (
+        accuracy_score,
+        classification_report,
+        roc_auc_score,
+        precision_score,
+        recall_score,
+        f1_score,
+        matthews_corrcoef
+    )
+
+    # Calculate all metrics
     accuracy = accuracy_score(y_test, y_pred)
+    auc_score = roc_auc_score(y_test, y_pred_proba)
+    precision = precision_score(y_test, y_pred)
+    recall = recall_score(y_test, y_pred)
+    f1 = f1_score(y_test, y_pred)
+    mcc = matthews_corrcoef(y_test, y_pred)
+
+    # Print all metrics
     print(f"\n{'='*50}")
-    print(f"Model Accuracy: {accuracy:.4f}")
+    print(f"MODEL EVALUATION METRICS")
+    print(f"{'='*50}")
+    print(f"1. Accuracy:                    {accuracy:.4f}")
+    print(f"2. AUC Score:                   {auc_score:.4f}")
+    print(f"3. Precision:                   {precision:.4f}")
+    print(f"4. Recall:                      {recall:.4f}")
+    print(f"5. F1 Score:                    {f1:.4f}")
+    print(f"6. Matthews Correlation Coeff:  {mcc:.4f}")
     print(f"{'='*50}")
     print("\nClassification Report:")
     print(classification_report(y_test, y_pred))
 
 
-    # Uncomment to plot confusion matrix
-    from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
-    cm = confusion_matrix(y_test, y_pred)
-    ConfusionMatrixDisplay(cm).plot()
-    import matplotlib.pyplot as plt
-    plt.show()
+
 
 
 if __name__ == '__main__':
