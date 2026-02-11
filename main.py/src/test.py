@@ -1,20 +1,19 @@
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
-from src import data_reader
 from src.data_definition import DataDefinition
 from src.pipeline_buider import PipelineBuilder
 
 import os
 import numpy as np
+import pandas as pd
 
 def logistic_regression():
     # Get the directory where this script is located
     script_dir = os.path.dirname(os.path.abspath(__file__))
     # Go up one level to main.py directory, then into data folder
     data_path = os.path.join(os.path.dirname(script_dir), 'data', 'loan_data.csv')
-    reader = data_reader.DataReader(data_path)
-    data = reader.load_data()
+    data =  pd.read_csv(data_path)
     pipeline_builder = PipelineBuilder()
     scale_encode_train_test_pipeline = pipeline_builder.build_pipeline()
 
@@ -88,10 +87,6 @@ def logistic_regression():
     print("\nClassification Report:")
     print(classification_report(y_test, y_pred))
 
-    # Uncomment to use custom threshold
-    # THRESHOLD = 0.7
-    # y_prob = scale_encode_train_test_pipeline.predict_proba(X_test)[:, 1]
-    # y_pred = (y_prob >= THRESHOLD).astype(int)
 
     # Uncomment to plot confusion matrix
     from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
