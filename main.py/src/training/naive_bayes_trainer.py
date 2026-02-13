@@ -4,7 +4,7 @@ from sklearn.preprocessing import RobustScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
 
 from src.data_definition import DataDefinition
-from src.models.base_model_trainer import BaseModelTrainer
+from src.training.base_model_trainer import BaseModelTrainer
 
 
 class NaiveBayesTrainer(BaseModelTrainer):

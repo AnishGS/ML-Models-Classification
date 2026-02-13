@@ -29,7 +29,9 @@ class BaseModelTrainer:
         
     def load_data(self):
         """Load the dataset"""
-        data_path = os.path.join(self.project_dir, 'data', 'loan_data.csv')
+        # Use train_data.csv for training (80% of data)
+        # test_data.csv (20%) is reserved for Streamlit evaluation
+        data_path = os.path.join(self.project_dir, 'data', 'train_data.csv')
         data = pd.read_csv(data_path)
         return data
     

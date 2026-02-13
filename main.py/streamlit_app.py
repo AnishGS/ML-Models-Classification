@@ -46,43 +46,54 @@ MODELS = {
 st.header("1. Dataset Upload")
 uploaded_file = st.file_uploader("Upload Test Dataset (CSV)", type=['csv'])
 
+# Option to specify if target column is included
+has_target = st.checkbox("Dataset includes target column (last column)", value=True)
+
 if uploaded_file is not None:
     test_data = pd.read_csv(uploaded_file)
     st.write("Dataset Preview:")
     st.dataframe(test_data.head())
 
-    # Assume last column is target
-    if len(test_data.columns) > 1:
+    # Split features and target based on user selection
+    if has_target and len(test_data.columns) > 1:
         X_test = test_data.iloc[:, :-1]
         y_test = test_data.iloc[:, -1]
-
+        st.write(f"Features: {X_test.shape[1]}, Samples: {X_test.shape[0]}, Target: {test_data.columns[-1]}")
+    else:
+        X_test = test_data
+        y_test = None
         st.write(f"Features: {X_test.shape[1]}, Samples: {X_test.shape[0]}")
 
-        # ============================================================================
-        # 2. Model Selection Dropdown
-        # ============================================================================
-        st.header("2. Model Selection")
+    # ============================================================================
+    # 2. Model Selection Dropdown
+    # ============================================================================
+    st.header("2. Model Selection")
 
-        # Check which models are available
-        available_models = {}
-        for name, filename in MODELS.items():
-            model_path = MODELS_DIR / filename
-            if model_path.exists():
-                available_models[name] = str(model_path)
+    # Check which models are available
+    available_models = {}
+    for name, filename in MODELS.items():
+        model_path = MODELS_DIR / filename
+        if model_path.exists():
+            available_models[name] = str(model_path)
 
-        if not available_models:
-            st.warning("No trained models found. Please train models first.")
-        else:
-            selected_model = st.selectbox("Select Model", list(available_models.keys()))
+    if not available_models:
+        st.warning("No trained models found. Please train models first.")
+    else:
+        selected_model = st.selectbox("Select Model", list(available_models.keys()))
 
-            if st.button("Evaluate Model"):
-                try:
-                    # Load model
-                    model = joblib.load(available_models[selected_model])
+        if st.button("Evaluate Model" if has_target else "Make Predictions"):
+            try:
+                # Load model
+                model = joblib.load(available_models[selected_model])
 
-                    # Make predictions
-                    y_pred = model.predict(X_test)
-                    y_pred_proba = model.predict_proba(X_test)
+                # Make predictions
+                y_pred = model.predict(X_test)
+                y_pred_proba = model.predict_proba(X_test)
+
+                if has_target and y_test is not None:
+                    # ============================================================================
+                    # WITH TARGET: Show evaluation metrics
+                    # ============================================================================
 
                     # Calculate metrics
                     accuracy = accuracy_score(y_test, y_pred)
@@ -124,7 +135,32 @@ if uploaded_file is not None:
                     report = classification_report(y_test, y_pred)
                     st.text(report)
 
-                except Exception as e:
-                    st.error(f"Error: {str(e)}")
+                else:
+                    # ============================================================================
+                    # WITHOUT TARGET: Just show predictions
+                    # ============================================================================
+                    st.header("3. Predictions")
+
+                    results_df = X_test.copy()
+                    results_df['Predicted_Class'] = y_pred
+
+                    # Add probability columns
+                    for i in range(y_pred_proba.shape[1]):
+                        results_df[f'Probability_Class_{i}'] = y_pred_proba[:, i]
+
+                    st.write("Prediction Results:")
+                    st.dataframe(results_df)
+
+                    # Download button
+                    csv = results_df.to_csv(index=False)
+                    st.download_button(
+                        label="Download Predictions as CSV",
+                        data=csv,
+                        file_name="predictions.csv",
+                        mime="text/csv"
+                    )
+
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
 else:
     st.info("Please upload a CSV file to begin evaluation.")
