@@ -1,6 +1,7 @@
 """
-ML Classification Models - Assignment 2
-M.Tech (AIML/DSE) - Machine Learning
+Loan Default Prediction - ML Classification Models
+Assignment 2: M.Tech (AIML/DSE) - Machine Learning
+Implements 6 classification algorithms for loan approval prediction
 """
 import streamlit as st
 import pandas as pd
@@ -8,7 +9,6 @@ import joblib
 from pathlib import Path
 from sklearn.metrics import (
     confusion_matrix,
-    classification_report,
     accuracy_score,
     roc_auc_score,
     precision_score,
@@ -18,12 +18,26 @@ from sklearn.metrics import (
 )
 import numpy as np
 
-# Page config
-st.set_page_config(page_title="ML Classification Models", layout="wide")
+# Page configuration
+st.set_page_config(
+    page_title="Loan Default Prediction - ML Models",
+    layout="wide"
+)
 
-# Title
-st.title("ML Classification Models")
-st.write("Assignment 2 - Machine Learning")
+# Header section
+st.title("Loan Default Prediction System")
+st.markdown("**Assignment 2 - Machine Learning Classification Models**")
+st.markdown("**Submitted by:** Anish Sharma | **Email:** 2025aa05225@wilp.bits-pilani.ac.in")
+st.markdown("---")
+
+# Information box
+st.info("""
+**About this Application:**
+- Compares 6 ML classification algorithms for loan default prediction
+- Dataset: Loan Approval Dataset (45,000 instances, 13 features)
+- Models: Logistic Regression, Decision Tree, kNN, Naive Bayes, Random Forest, XGBoost
+- Evaluation: 6 metrics (Accuracy, AUC, Precision, Recall, F1, MCC) + Confusion Matrix
+""")
 
 # Get project paths
 PROJECT_DIR = Path(__file__).parent
@@ -43,31 +57,43 @@ MODELS = {
 # ============================================================================
 # 1. Dataset Upload (CSV)
 # ============================================================================
-st.header("1. Dataset Upload")
-uploaded_file = st.file_uploader("Upload Test Dataset (CSV)", type=['csv'])
+st.header("Step 1: Upload Test Dataset")
+st.markdown("Upload your test dataset in CSV format. The target column should be the **last column**.")
 
-# Option to specify if target column is included
-has_target = st.checkbox("Dataset includes target column (last column)", value=True)
+uploaded_file = st.file_uploader(
+    "Choose a CSV file",
+    type=['csv'],
+    help="Upload test data with features and target column (loan_status)"
+)
 
 if uploaded_file is not None:
     test_data = pd.read_csv(uploaded_file)
-    st.write("Dataset Preview:")
-    st.dataframe(test_data.head())
 
-    # Split features and target based on user selection
-    if has_target and len(test_data.columns) > 1:
-        X_test = test_data.iloc[:, :-1]
-        y_test = test_data.iloc[:, -1]
-        st.write(f"Features: {X_test.shape[1]}, Samples: {X_test.shape[0]}, Target: {test_data.columns[-1]}")
-    else:
-        X_test = test_data
-        y_test = None
-        st.write(f"Features: {X_test.shape[1]}, Samples: {X_test.shape[0]}")
+    st.success(f"Dataset uploaded successfully! ({len(test_data)} rows)")
+
+    # Dataset preview in expandable section
+    with st.expander("View Dataset Preview", expanded=True):
+        st.dataframe(test_data.head(10), use_container_width=True)
+
+    # Split features and target (target is last column)
+    X_test = test_data.iloc[:, :-1]
+    y_test = test_data.iloc[:, -1]
+
+    # Display dataset information
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Number of Features", X_test.shape[1])
+    with col2:
+        st.metric("Number of Samples", X_test.shape[0])
+    with col3:
+        st.metric("Target Column", test_data.columns[-1])
+
+    st.markdown("---")
 
     # ============================================================================
     # 2. Model Selection Dropdown
     # ============================================================================
-    st.header("2. Model Selection")
+    st.header("Step 2: Select Classification Model")
 
     # Check which models are available
     available_models = {}
@@ -77,23 +103,28 @@ if uploaded_file is not None:
             available_models[name] = str(model_path)
 
     if not available_models:
-        st.warning("No trained models found. Please train models first.")
+        st.warning("No trained models found. Please train models first using `python -m src.train_models`")
     else:
-        selected_model = st.selectbox("Select Model", list(available_models.keys()))
+        st.markdown("Choose one of the 6 trained classification models:")
 
-        if st.button("Evaluate Model" if has_target else "Make Predictions"):
+        selected_model = st.selectbox(
+            "Select Model",
+            list(available_models.keys()),
+            help="All models are trained on the same training dataset"
+        )
+
+        st.markdown("---")
+
+        # Evaluate button with custom styling
+        if st.button("Evaluate Model", type="primary", use_container_width=True):
             try:
-                # Load model
-                model = joblib.load(available_models[selected_model])
+                with st.spinner(f'Loading {selected_model} and making predictions...'):
+                    # Load model
+                    model = joblib.load(available_models[selected_model])
 
-                # Make predictions
-                y_pred = model.predict(X_test)
-                y_pred_proba = model.predict_proba(X_test)
-
-                if has_target and y_test is not None:
-                    # ============================================================================
-                    # WITH TARGET: Show evaluation metrics
-                    # ============================================================================
+                    # Make predictions
+                    y_pred = model.predict(X_test)
+                    y_pred_proba = model.predict_proba(X_test)
 
                     # Calculate metrics
                     accuracy = accuracy_score(y_test, y_pred)
@@ -102,7 +133,7 @@ if uploaded_file is not None:
                     f1 = f1_score(y_test, y_pred, average='weighted')
                     mcc = matthews_corrcoef(y_test, y_pred)
 
-                    # AUC Score
+                    # AUC Score (handles binary classification)
                     try:
                         if len(np.unique(y_test)) == 2:
                             auc = roc_auc_score(y_test, y_pred_proba[:, 1])
@@ -111,56 +142,80 @@ if uploaded_file is not None:
                     except:
                         auc = 0.0
 
-                    # ============================================================================
-                    # 3. Display Evaluation Metrics
-                    # ============================================================================
-                    st.header("3. Evaluation Metrics")
+                st.success(f"Model evaluation completed for **{selected_model}**!")
+                st.markdown("---")
 
-                    metrics_df = pd.DataFrame({
-                        'Metric': ['Accuracy', 'AUC Score', 'Precision', 'Recall', 'F1 Score', 'MCC'],
-                        'Value': [accuracy, auc, precision, recall, f1, mcc]
-                    })
-                    st.table(metrics_df)
+                # ============================================================================
+                # 3. Display Evaluation Metrics
+                # ============================================================================
+                st.header("Step 3: Evaluation Metrics")
+                st.markdown(f"Performance metrics for **{selected_model}** on test dataset:")
 
-                    # ============================================================================
-                    # 4. Confusion Matrix and Classification Report
-                    # ============================================================================
-                    st.header("4. Confusion Matrix")
+                # Display metrics in a formatted table
+                metrics_df = pd.DataFrame({
+                    'Metric': ['Accuracy', 'AUC Score', 'Precision', 'Recall', 'F1 Score', 'MCC'],
+                    'Value': [f"{accuracy:.4f}", f"{auc:.4f}", f"{precision:.4f}",
+                             f"{recall:.4f}", f"{f1:.4f}", f"{mcc:.4f}"]
+                })
 
-                    cm = confusion_matrix(y_test, y_pred)
-                    st.write("Confusion Matrix:")
-                    st.write(cm)
+                st.table(metrics_df)
 
-                    st.subheader("Classification Report")
-                    report = classification_report(y_test, y_pred)
-                    st.text(report)
+                # Highlight best metrics for imbalanced data
+                st.info(f"**Key Metrics for Imbalanced Data:** F1 Score = {f1:.4f}, MCC = {mcc:.4f}")
 
-                else:
-                    # ============================================================================
-                    # WITHOUT TARGET: Just show predictions
-                    # ============================================================================
-                    st.header("3. Predictions")
+                st.markdown("---")
 
-                    results_df = X_test.copy()
-                    results_df['Predicted_Class'] = y_pred
+                # ============================================================================
+                # 4. Confusion Matrix
+                # ============================================================================
+                st.header("Step 4: Confusion Matrix")
+                st.markdown("Confusion matrix shows the model's prediction accuracy for each class:")
 
-                    # Add probability columns
-                    for i in range(y_pred_proba.shape[1]):
-                        results_df[f'Probability_Class_{i}'] = y_pred_proba[:, i]
+                cm = confusion_matrix(y_test, y_pred)
 
-                    st.write("Prediction Results:")
-                    st.dataframe(results_df)
+                # Display confusion matrix as styled DataFrame
+                cm_df = pd.DataFrame(
+                    cm,
+                    columns=[f'Predicted {i}' for i in range(cm.shape[1])],
+                    index=[f'Actual {i}' for i in range(cm.shape[0])]
+                )
 
-                    # Download button
-                    csv = results_df.to_csv(index=False)
-                    st.download_button(
-                        label="Download Predictions as CSV",
-                        data=csv,
-                        file_name="predictions.csv",
-                        mime="text/csv"
-                    )
+                # Display with custom styling
+                st.dataframe(cm_df, use_container_width=True)
+
+                # Add interpretation
+                st.markdown(f"""
+                **Interpretation:**
+                - True Negatives (TN): {cm[0][0]} - Correctly predicted as Class 0
+                - False Positives (FP): {cm[0][1]} - Incorrectly predicted as Class 1
+                - False Negatives (FN): {cm[1][0]} - Incorrectly predicted as Class 0
+                - True Positives (TP): {cm[1][1]} - Correctly predicted as Class 1
+                """)
 
             except Exception as e:
-                st.error(f"Error: {str(e)}")
+                st.error(f"Error during evaluation: {str(e)}")
+                st.info("Please ensure the uploaded dataset has the correct format and features.")
 else:
-    st.info("Please upload a CSV file to begin evaluation.")
+    st.info("Please upload a CSV file to begin model evaluation.")
+
+    # Instructions when no file is uploaded
+    with st.expander("How to use this application"):
+        st.markdown("""
+        **Steps to evaluate models:**
+        1. Upload your test dataset (CSV format) with target column as the last column
+        2. Select one of the 6 trained classification models
+        3. Click 'Evaluate Model' to see performance metrics and confusion matrix
+
+        **Expected Dataset Format:**
+        - CSV file with features and target column
+        - Target column should be the **last column**
+        - Example: `data/test_data.csv` (9,000 samples, 13 columns)
+
+        **Available Models:**
+        - Logistic Regression
+        - Decision Tree
+        - K-Nearest Neighbors (kNN)
+        - Naive Bayes
+        - Random Forest (Ensemble)
+        - XGBoost (Ensemble)
+        """)
